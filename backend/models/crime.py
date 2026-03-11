@@ -30,6 +30,15 @@ class CrimeReportCreate(BaseModel):
     is_anonymous: bool = True
     evidence_urls: List[str] = []
 
+
+class CrimeReportUpdate(BaseModel):
+    category: Optional[str] = None
+    description: Optional[str] = None
+    location: Optional[LocationModel] = None
+    incident_time: Optional[datetime] = None
+    is_anonymous: Optional[bool] = None
+    evidence_urls: Optional[List[str]] = None
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -64,6 +73,7 @@ class CrimeReportOut(BaseModel):
     notes_count: int = 0
     created_at: datetime
     user_vote: Optional[str] = None  # "up", "down", or None
+    is_owner: bool = False
 
 
 class HeatmapPoint(BaseModel):

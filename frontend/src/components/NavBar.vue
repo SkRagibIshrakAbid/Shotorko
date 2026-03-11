@@ -25,7 +25,7 @@ function logout() {
     <div class="navbar-inner">
       <router-link to="/" class="brand" @click="menuOpen = false">
         <span class="brand-eye">👁</span>
-        <span class="brand-name">CrimeEye</span>
+        <span class="brand-name">সতর্ক</span>
       </router-link>
 
       <nav class="nav-links" :class="{ open: menuOpen }">

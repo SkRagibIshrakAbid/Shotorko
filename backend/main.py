@@ -7,7 +7,7 @@ import os
 from database import connect_db, close_db, get_db
 from routes import auth, crimes, notes
 
-app = FastAPI(title="CrimeEye API", version="1.0.0")
+app = FastAPI(title="সতর্ক API", version="1.0.0")
 
 # CORS – allow Vite dev server during development
 app.add_middleware(
@@ -37,7 +37,7 @@ app.include_router(notes.router)
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "app": "CrimeEye"}
+    return {"status": "ok", "app": "সতর্ক (Shotorko)"}
 
 
 # ─── Serve Vue SPA ────────────────────────────────────────────────────────────
@@ -58,7 +58,7 @@ else:
     @app.get("/", include_in_schema=False)
     async def root():
         return {
-            "message": "CrimeEye API is running. Build the Vue frontend and place it in backend/static/.",
+            "message": "সতর্ক API is running. Build the Vue frontend and place it in backend/static/.",
             "docs": "/docs",
         }
 

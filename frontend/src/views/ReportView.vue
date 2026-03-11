@@ -71,7 +71,7 @@ async function submit() {
         ✅ রিপোর্ট জমা হয়েছে! পুনর্নির্দেশিত হচ্ছে…
       </div>
 
-      <form v-else @submit.prevent="submit" class="report-form">
+      <div v-if="!success" class="report-form">
         <!-- Category -->
         <div class="field">
           <label>ঘটনার ধরন *</label>
@@ -94,14 +94,13 @@ async function submit() {
             v-model="form.description"
             placeholder="ঘটনার বিস্তারিত লিখুন… (ব্যক্তির নাম উল্লেখ করবেন না)"
             rows="4"
-            required
           ></textarea>
         </div>
 
         <!-- Date/time -->
         <div class="field">
           <label>ঘটনার সময় *</label>
-          <input v-model="form.incident_time" type="datetime-local" required />
+          <input v-model="form.incident_time" type="datetime-local" />
         </div>
 
         <!-- Location name -->
@@ -114,7 +113,7 @@ async function submit() {
           />
         </div>
 
-        <!-- Map picker -->
+        <!-- Map picker — intentionally OUTSIDE any <form> tag so Leaflet popup buttons never trigger submission -->
         <div class="field">
           <label>
             মানচিত্রে স্থান নির্বাচন করুন
@@ -156,10 +155,10 @@ async function submit() {
 
         <p v-if="error" class="error">{{ error }}</p>
 
-        <button type="submit" class="submit-btn" :disabled="submitting">
+        <button type="button" class="submit-btn" :disabled="submitting" @click="submit">
           {{ submitting ? 'জমা হচ্ছে…' : '📨 রিপোর্ট জমা দিন' }}
         </button>
-      </form>
+      </div>
     </div>
   </div>
 </template>

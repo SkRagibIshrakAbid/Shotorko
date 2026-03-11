@@ -4,8 +4,8 @@ from datetime import datetime
 from bson import ObjectId
 
 from database import get_db
-from models.crime import CrimeReportCreate, CrimeReportOut, VoteModel, HeatmapPoint
-from routes.auth import get_current_user
+from models.crime import CrimeReportCreate, CrimeReportUpdate, CrimeReportOut, VoteModel, HeatmapPoint
+from routes.auth import get_current_user, require_user
 
 router = APIRouter(prefix="/api/crimes", tags=["crimes"])
 
@@ -34,6 +34,8 @@ def doc_to_out(doc: dict, current_user_id: Optional[str] = None) -> CrimeReportO
     user_vote = None
     if current_user_id:
         user_vote = voters.get(current_user_id)
+    # is_owner uses the real reporter_id from DB regardless of is_anonymous
+    is_owner = bool(current_user_id and doc.get("reporter_id") and doc.get("reporter_id") == current_user_id)
     return CrimeReportOut(
         id=str(doc["_id"]),
         category=doc["category"],
@@ -51,6 +53,7 @@ def doc_to_out(doc: dict, current_user_id: Optional[str] = None) -> CrimeReportO
         notes_count=doc.get("notes_count", 0),
         created_at=doc.get("created_at", datetime.utcnow()),
         user_vote=user_vote,
+        is_owner=is_owner,
     )
 
 
@@ -62,12 +65,16 @@ async def list_crimes(
     radius_km: float = 10.0,
     from_date: Optional[datetime] = None,
     to_date: Optional[datetime] = None,
+    my_posts: bool = False,
     page: int = 1,
     limit: int = 20,
     db=Depends(get_db),
     current_user: Optional[dict] = Depends(get_current_user),
 ):
     query: dict = {"status": "active"}
+
+    if my_posts and current_user:
+        query["reporter_id"] = str(current_user["_id"])
 
     if category:
         query["category"] = category
@@ -115,7 +122,7 @@ async def create_crime(
         },
         "incident_time": data.incident_time,
         "is_anonymous": data.is_anonymous,
-        "reporter_id": str(current_user["_id"]) if current_user and not data.is_anonymous else None,
+        "reporter_id": str(current_user["_id"]) if current_user else None,
         "reporter_name": current_user.get("username") if current_user and not data.is_anonymous else None,
         "reporter_reputation": current_user.get("reputation", 0) if current_user else 0,
         "evidence_urls": data.evidence_urls,
@@ -182,8 +189,74 @@ async def get_crime(
     return doc_to_out(doc, uid)
 
 
+@router.put("/{crime_id}", response_model=CrimeReportOut)
+async def update_crime(
+    crime_id: str,
+    data: CrimeReportUpdate,
+    db=Depends(get_db),
+    current_user: dict = Depends(require_user),
+):
+    if not ObjectId.is_valid(crime_id):
+        raise HTTPException(status_code=400, detail="Invalid ID")
+    doc = await db.crimes.find_one({"_id": ObjectId(crime_id)})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Not found")
+    if doc.get("reporter_id") != str(current_user["_id"]):
+        raise HTTPException(status_code=403, detail="শুধু রিপোর্টকারী সম্পাদনা করতে পারবে")
+
+    changes: dict = {}
+    if data.category is not None:
+        changes["category"] = data.category
+    if data.description is not None:
+        changes["description"] = data.description
+    if data.location is not None:
+        changes["location"] = data.location.model_dump()
+        changes["location_point"] = {
+            "type": "Point",
+            "coordinates": [data.location.lng, data.location.lat],
+        }
+    if data.incident_time is not None:
+        changes["incident_time"] = data.incident_time
+    if data.is_anonymous is not None:
+        changes["is_anonymous"] = data.is_anonymous
+        if data.is_anonymous:
+            # keep reporter_id for ownership tracking; only hide reporter_name publicly
+            changes["reporter_name"] = None
+        else:
+            changes["reporter_name"] = current_user.get("username")
+    if data.evidence_urls is not None:
+        changes["evidence_urls"] = data.evidence_urls
+    changes["updated_at"] = datetime.utcnow()
+
+    await db.crimes.update_one({"_id": ObjectId(crime_id)}, {"$set": changes})
+    updated = await db.crimes.find_one({"_id": ObjectId(crime_id)})
+    return doc_to_out(updated, str(current_user["_id"]))
+
+
+@router.delete("/{crime_id}", status_code=204)
+async def delete_crime(
+    crime_id: str,
+    db=Depends(get_db),
+    current_user: dict = Depends(require_user),
+):
+    if not ObjectId.is_valid(crime_id):
+        raise HTTPException(status_code=400, detail="Invalid ID")
+    doc = await db.crimes.find_one({"_id": ObjectId(crime_id)})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Not found")
+    if doc.get("reporter_id") != str(current_user["_id"]):
+        raise HTTPException(status_code=403, detail="শুধু রিপোর্টকারী মুছতে পারবে")
+    await db.crimes.delete_one({"_id": ObjectId(crime_id)})
+    await db.notes.delete_many({"crime_id": crime_id})
+    if current_user:
+        await db.users.update_one(
+            {"_id": current_user["_id"]},
+            {"$inc": {"reports_submitted": -1}},
+        )
+
+
 @router.post("/{crime_id}/vote", response_model=CrimeReportOut)
-async def vote_crime(
+async def vote_on_crime(
     crime_id: str,
     vote: VoteModel,
     db=Depends(get_db),

@@ -4,18 +4,24 @@ import { useRouter } from 'vue-router'
 import MapComponent from '@/components/MapComponent.vue'
 import CategoryBadge from '@/components/CategoryBadge.vue'
 import { useCrimesStore } from '@/stores/crimes'
+import { useAuthStore } from '@/stores/auth'
 
 const crimes = useCrimesStore()
+const auth = useAuthStore()
 const router = useRouter()
 const showHeatmap = ref(false)
 const selectedCategory = ref('')
+const myPostsOnly = ref(false)
 
 const CATEGORIES = ['চাঁদাবাজি', 'চুরি', 'ডাকাতি', 'হয়রানি', 'মাদক', 'হামলা', 'সন্দেহজনক']
 
-onMounted(async () => {
+async function loadMap() {
+  crimes.filters.my_posts = myPostsOnly.value
   await crimes.fetchCrimes({ limit: 200 })
   await crimes.fetchHeatmap()
-})
+}
+
+onMounted(() => loadMap())
 
 const filteredCrimes = computed(() => {
   if (!selectedCategory.value) return crimes.crimes
@@ -29,6 +35,12 @@ const filteredHeatmap = computed(() => {
 
 async function filterCategory(cat) {
   selectedCategory.value = cat === selectedCategory.value ? '' : cat
+}
+
+async function toggleMyPosts() {
+  myPostsOnly.value = !myPostsOnly.value
+  selectedCategory.value = ''
+  await loadMap()
 }
 
 function onCrimeClick(crime) {
@@ -62,6 +74,12 @@ function onCrimeClick(crime) {
           <CategoryBadge :category="cat" small />
         </button>
         <button v-if="selectedCategory" class="clear-btn" @click="selectedCategory = ''">✕ সব</button>
+        <button
+          v-if="auth.isLoggedIn"
+          class="ctrl-btn my-posts-btn"
+          :class="{ active: myPostsOnly }"
+          @click="toggleMyPosts"
+        >👤 আমার পোস্ট</button>
       </div>
     </div>
 
@@ -114,6 +132,8 @@ function onCrimeClick(crime) {
   transition: all 0.2s;
 }
 .ctrl-btn.active { background: rgba(239,68,68,0.2); color: #ef4444; border-color: #ef4444; }
+.my-posts-btn { margin-left: auto; }
+.my-posts-btn.active { background: rgba(59,130,246,0.2) !important; color: #3b82f6 !important; border-color: #3b82f6 !important; }
 .divider { width: 1px; height: 20px; background: #1e293b; margin: 0 0.2rem; }
 .cat-filter { background: none; border: none; cursor: pointer; padding: 0; }
 .cat-filter.active { outline: 2px solid rgba(255,255,255,0.3); border-radius: 999px; }

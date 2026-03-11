@@ -1,4 +1,4 @@
-# CrimeEye 👁
+# সতর্ক (Shotorko) 👁
 
 Community-driven crime reporting platform for Bangladesh, built with **Vue 3 + FastAPI + MongoDB Atlas**.
 

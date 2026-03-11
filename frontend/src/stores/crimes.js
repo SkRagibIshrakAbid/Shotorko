@@ -14,6 +14,7 @@ export const useCrimesStore = defineStore('crimes', () => {
     lat: null,
     lng: null,
     radius_km: 50,
+    my_posts: false,
     page: 1,
     limit: 20,
   })
@@ -46,6 +47,20 @@ export const useCrimesStore = defineStore('crimes', () => {
     const { data } = await crimesApi.create(payload)
     crimes.value.unshift(data)
     return data
+  }
+
+  async function updateCrime(id, payload) {
+    const { data } = await crimesApi.update(id, payload)
+    const idx = crimes.value.findIndex((c) => c.id === id)
+    if (idx !== -1) crimes.value[idx] = data
+    if (currentCrime.value?.id === id) currentCrime.value = data
+    return data
+  }
+
+  async function deleteCrime(id) {
+    await crimesApi.remove(id)
+    crimes.value = crimes.value.filter((c) => c.id !== id)
+    if (currentCrime.value?.id === id) currentCrime.value = null
   }
 
   async function voteCrime(id, voteType) {
@@ -88,6 +103,8 @@ export const useCrimesStore = defineStore('crimes', () => {
     fetchCrimes,
     fetchCrime,
     createCrime,
+    updateCrime,
+    deleteCrime,
     voteCrime,
     fetchHeatmap,
     fetchNotes,

@@ -57,37 +57,38 @@ function makeConfirmedIcon() {
 function showConfirmPopup(marker, lat, lng) {
   const popupContent = document.createElement('div')
   popupContent.style.cssText = 'font-family:sans-serif;text-align:center;min-width:160px;'
-  popupContent.innerHTML = `
-    <div style="font-size:12px;color:#374151;margin-bottom:8px;">
-      📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}
-    </div>
-    <button id="ce-confirm-btn" style="
-      background:#ef4444;color:#fff;border:none;border-radius:6px;
-      padding:7px 16px;font-size:13px;cursor:pointer;width:100%;
-      font-weight:600;
-    ">✔ এখানে নির্বাচন করুন</button>
+
+  const coordLabel = document.createElement('div')
+  coordLabel.style.cssText = 'font-size:12px;color:#374151;margin-bottom:8px;'
+  coordLabel.textContent = `📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}`
+
+  const btn = document.createElement('button')
+  btn.type = 'button'
+  btn.textContent = '✔ এখানে নির্বাচন করুন'
+  btn.style.cssText = `
+    background:#ef4444;color:#fff;border:none;border-radius:6px;
+    padding:7px 16px;font-size:13px;cursor:pointer;width:100%;font-weight:600;
   `
+  btn.addEventListener('click', () => {
+    map.removeLayer(marker)
+    pendingMarker = null
+    if (confirmedMarker) map.removeLayer(confirmedMarker)
+    confirmedMarker = L.marker([lat, lng], { icon: makeConfirmedIcon() }).addTo(map)
+    confirmedMarker.bindPopup(
+      `<div style="font-family:sans-serif;font-size:12px;color:#374151;">
+        ✅ নির্বাচিত স্থান<br>
+        <span style="color:#6b7280">${lat.toFixed(5)}, ${lng.toFixed(5)}</span>
+      </div>`
+    ).openPopup()
+    emit('location-picked', { lat, lng })
+  })
+
+  popupContent.appendChild(coordLabel)
+  popupContent.appendChild(btn)
+
   const popup = L.popup({ closeButton: false, offset: [0, -6] })
     .setContent(popupContent)
   marker.bindPopup(popup).openPopup()
-
-  marker.on('popupopen', () => {
-    const btn = document.getElementById('ce-confirm-btn')
-    if (!btn) return
-    btn.onclick = () => {
-      map.removeLayer(marker)
-      pendingMarker = null
-      if (confirmedMarker) map.removeLayer(confirmedMarker)
-      confirmedMarker = L.marker([lat, lng], { icon: makeConfirmedIcon() }).addTo(map)
-      confirmedMarker.bindPopup(
-        `<div style="font-family:sans-serif;font-size:12px;color:#374151;">
-          ✅ নির্বাচিত স্থান<br>
-          <span style="color:#6b7280">${lat.toFixed(5)}, ${lng.toFixed(5)}</span>
-        </div>`
-      ).openPopup()
-      emit('location-picked', { lat, lng })
-    }
-  })
 }
 
 function handleMapClick(e) {

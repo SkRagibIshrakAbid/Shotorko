@@ -25,8 +25,8 @@ export const authApi = {
 export const crimesApi = {
   list: (params) => http.get('/crimes', { params }),
   get: (id) => http.get(`/crimes/${id}`),
-  create: (data) => http.post('/crimes', data),
-  vote: (id, voteType) => http.post(`/crimes/${id}/vote`, { vote_type: voteType }),
+  create: (data) => http.post('/crimes', data),  update: (id, data) => http.put(`/crimes/${id}`, data),
+  remove: (id) => http.delete(`/crimes/${id}`),  vote: (id, voteType) => http.post(`/crimes/${id}/vote`, { vote_type: voteType }),
   heatmap: (params) => http.get('/crimes/heatmap', { params }),
 }
 

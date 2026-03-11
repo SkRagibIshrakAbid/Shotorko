@@ -2,8 +2,10 @@
 import { ref, onMounted } from 'vue'
 import CrimeCard from '@/components/CrimeCard.vue'
 import { useCrimesStore } from '@/stores/crimes'
+import { useAuthStore } from '@/stores/auth'
 
 const crimes = useCrimesStore()
+const auth = useAuthStore()
 
 const CATEGORIES = ['', 'চাঁদাবাজি', 'চুরি', 'ডাকাতি', 'হয়রানি', 'মাদক', 'হামলা', 'সন্দেহজনক']
 const LABELS = {
@@ -18,18 +20,26 @@ const LABELS = {
 }
 
 const selectedCategory = ref('')
+const myPostsOnly = ref(false)
 const currentPage = ref(1)
 
 onMounted(() => fetchData())
 
 async function fetchData() {
   crimes.filters.category = selectedCategory.value
+  crimes.filters.my_posts = myPostsOnly.value
   crimes.filters.page = currentPage.value
   await crimes.fetchCrimes()
 }
 
 async function setCategory(cat) {
   selectedCategory.value = cat
+  currentPage.value = 1
+  await fetchData()
+}
+
+async function toggleMyPosts() {
+  myPostsOnly.value = !myPostsOnly.value
   currentPage.value = 1
   await fetchData()
 }
@@ -70,6 +80,12 @@ const totalPages = () => Math.max(1, Math.ceil(crimes.total / crimes.filters.lim
       >
         {{ LABELS[cat] }}
       </button>
+      <button
+        v-if="auth.isLoggedIn"
+        class="tab my-posts-tab"
+        :class="{ active: myPostsOnly }"
+        @click="toggleMyPosts"
+      >👤 আমার পোস্ট</button>
     </div>
 
     <!-- Loading -->
@@ -138,6 +154,14 @@ const totalPages = () => Math.max(1, Math.ceil(crimes.total / crimes.filters.lim
   background: rgba(239,68,68,0.15);
   border-color: #ef4444;
   color: #ef4444;
+}
+.my-posts-tab {
+  margin-left: auto;
+}
+.my-posts-tab.active {
+  background: rgba(59,130,246,0.15);
+  border-color: #3b82f6;
+  color: #3b82f6;
 }
 .loader {
   display: flex;
